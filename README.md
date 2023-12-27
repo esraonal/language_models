@@ -1,16 +1,10 @@
-# language_models
-
-Suggestions for a good README
-
-Every project is different, so consider which of these sections apply to yours. The sections used in the template are suggestions for most open source projects. Also keep in mind that while a README can be too long and detailed, too long is better than too short. If you think your README is too long, consider utilizing another form of documentation rather than cutting out information.
-
-# Incorporating incrementality into self-attention mechanism 
+# Seperation or corporation of recurrence and self-attention 
 # Description
 
-This study investigates different aspects of the human language processing system and how they are reflected in recent deep neural network architectures.  Numerous research supports that neural networks that utilize recurrence not only show promising results in many natural language processing tasks but also give insights into how sentence comprehension takes place in humans and what type of complex cognitive operations underlie this process such as incrementality. However, successive neural networks such as Transformers that make use of a self-attention mechanism are now considered the state-of-the-art in language modeling due to their strength in drawing direct relations between words in sequential data without recurrence.  They separately attend to different aspects of the human language processing system, but why one performs better than the other one is not yet clear for language processing and what the results of an architecture that combines both mechanisms constitutes the core of this study. We specifically use BERT (Bidirectional Encoder Representations from Transformers) and (Bi)LSTM layers to create the language models.
+This study investigates different aspects of the human language processing system and how they are reflected in recent deep neural network architectures.  Numerous research supports that neural networks that utilize recurrence not only show promising results in many natural language processing tasks but also give insights into how sentence comprehension takes place in humans and what type of complex cognitive operations underlie this process such as incrementality. However, successive neural networks such as Transformers that make use of a self-attention mechanism are now considered the state-of-the-art in language modeling due to their strength in drawing direct relations between words in sequential data without recurrence.  They separately attend to different aspects of the human language processing system, but why one performs better than the other one is not yet clear for language processing and what the results of an architecture that combines both mechanisms constitutes the core of this study. We specifically use BERT (Bidirectional Encoder Representations from Transformers) and (Bi)LSTM layers to create different language models.
 
 ## 
-In this regard, we trained four different language models layered using self-attention (BERT), recurrence (LSTM) and bidirectionality (BiLSTM).
+In this regard, we trained four different language models with self-attention (BERT), recurrence (LSTM) and bidirectionality (BiLSTM).
 
 ## dataset
 
@@ -34,20 +28,6 @@ One sample can be seen below
 ```
 'This sound track was beautiful! It paints the senery in your mind so well I would recomend it even to people who hate vid. game music! I have played the game Chrono Cross but out of all of the games I have ever played it has the best music! It backs away from crude keyboarding and takes a fresher step with grate guitars and soulful orchestras. It would impress anyone who cares to listen! ^_^'
 ```
-
-@dataclass
-class Config:
-    MAX_LEN = 256
-    BATCH_SIZE = 32
-    LR = 0.001
-    VOCAB_SIZE = 30000
-    EMBED_DIM = 128
-    NUM_HEAD = 8  # used in bert model
-    FF_DIM = 128  # used in bert model
-    NUM_LAYERS = 1
-
-
-config = Config()
 
 ## data preprocessing
 
@@ -82,6 +62,10 @@ First langauge model is trained with the encoder from the classical Transformers
 
 # Installation
 
+```
+pip install -r requirements.txt
+
+```
 Within a particular ecosystem, there may be a common way of installing things, such as using Yarn, NuGet, or Homebrew. However, consider the possibility that whoever is reading your README is a novice and would like more guidance. Listing specific steps helps remove ambiguity and gets people to using your project as quickly as possible. If it only runs in a specific context like a particular programming language version or operating system or has dependencies that have to be installed manually, also add a Requirements subsection.
 # Usage
 
