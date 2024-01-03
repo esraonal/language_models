@@ -1,35 +1,93 @@
 # Seperation or corporation of recurrence and self-attention 
-# Description
+# Project Description
 
 This study investigates different aspects of the human language processing system and how they are reflected in recent deep neural network architectures.  Numerous research supports that neural networks that utilize recurrence not only show promising results in many natural language processing tasks but also give insights into how sentence comprehension takes place in humans and what type of complex cognitive operations underlie this process such as incrementality. However, successive neural networks such as Transformers that make use of a self-attention mechanism are now considered the state-of-the-art in language modeling due to their strength in drawing direct relations between words in sequential data without recurrence.  They separately attend to different aspects of the human language processing system, but why one performs better than the other one is not yet clear for language processing and what the results of an architecture that combines both mechanisms constitutes the core of this study. We specifically use BERT (Bidirectional Encoder Representations from Transformers) and (Bi)LSTM layers to create different language models.
 
 ## 
-In this regard, we trained four different language models with self-attention (BERT), recurrence (LSTM) and bidirectionality (BiLSTM).
+In this regard, we will train four different language models with self-attention (BERT), recurrence (LSTM) and bidirectionality (BiLSTM).
 
-## dataset
+## Set-up
+We will train the models in TensorFlow with keras layers.  Let's import necessay libraries!
 
-Models are trained with 50,000 random reviews (both negative and positive sentiment) from the Amazon Polarity dataset from Hugging Face. The dataset is mostly used for text-classification and sentiment-classification, but for training our language models, only content data which contains the body of the document is used, without the label or the title data. In total, there are 3,600,000 training samples and 400,000 test samples in this dataset as seen below.
+```
+import tensorflow as tf
+from tensorflow import keras
+from tensorflow.keras import layers
+from tensorflow.keras.layers import TextVectorization
 
+from dataclasses import dataclass
+import pandas as pd
+import numpy as np
+import glob
+import re
+from pprint import pprint
+```
+## Dataset
+
+Models are trained with 50,000 reviews (both negative and positive sentiment) from [Amazon Polarity](https://huggingface.co/datasets/Siki-77/amazon6_polarity) dataset from Hugging Face. 
+
+Install following libraries in order to load the dataset from Hugging Face.
+```
+! pip install datasets
+! pip install apache_beam
+```
+
+Import the libraries.  We will use load_dataset
+```
+import apache_beam
+from datasets import load_dataset
+```
+
+Load the dataset
+```
+dataset = load_dataset("Siki-77/amazon6_polarity")
+print(dataset)
+```
+
+Dataset is split into training and test samples.  Additionally, the dataset has data fields such as label showing negative and positive rating scores, title, context containing the text and feeling encoding 0 as negative and 1 as positive. 
+
+See the data structure
 ```
 DatasetDict({
     train: Dataset({
-        features: ['label', 'title', 'content'],
-        num_rows: 3600000
+        features: ['label', 'title', 'context', 'feeling'],
+        num_rows: 249624
     })
     test: Dataset({
-        features: ['label', 'title', 'content'],
-        num_rows: 400000
+        features: ['label', 'title', 'context', 'feeling'],
+        num_rows: 207317
     })
 })
 ```
 
-One sample can be seen below
+For training our language models, only context data which contains the body of the document is used, without the label/feeling or the title data. In total, there are 249,624 training samples and 207,317 test samples in this dataset as seen below.  
 
+Get trainign and test samples
 ```
-'This sound track was beautiful! It paints the senery in your mind so well I would recomend it even to people who hate vid. game music! I have played the game Chrono Cross but out of all of the games I have ever played it has the best music! It backs away from crude keyboarding and takes a fresher step with grate guitars and soulful orchestras. It would impress anyone who cares to listen! ^_^'
+train_amazon_review = []
+test_amazon_review = []
+
+length_train = len(dataset['train'])
+for i in range(length_train):
+    train_amazon_review.append(dataset['train'][i]['context'])
+
+length_test = len(dataset['test'])
+
+test_amazon_review = []
+for i in range(length_test):
+    test_amazon_review.append(dataset['test'][i]['context'])
+
+print(dataset['test'][100]['context'])
+```
+
+One sample can be seen below.
+```
+'"Boutique" quality sailor suit. I liked it so much I even bought the coordinating dress for my daughter. You will not be disappointed with this find!'
 ```
 
 ## data preprocessing
+
+For this project we are not using pre-trained word embeddings so we will create our ow
 
 Since we need to feed numbers as vectors, not strings to train our language models, we need to vectorize the reviews. Additionally, since we are using BERT and self-attention, masking has been chosen as the appropriate approach to prepare the data for training. This way, the task is to predict the masked token in a given contect. The input fed into the model is the masked token IDs, and the expected output is the actual token IDs. 
 
