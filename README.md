@@ -1,26 +1,29 @@
-# Seperation or corporation of recurrence and self-attention 
 # Project Description
 
-This study investigates different aspects of the human language processing system and how they are reflected in recent deep neural network architectures.  Numerous research supports that neural networks that utilize recurrence not only show promising results in many natural language processing tasks but also give insights into how sentence comprehension takes place in humans and what type of complex cognitive operations underlie this process such as incrementality. However, successive neural networks such as Transformers that make use of a self-attention mechanism are now considered the state-of-the-art in language modeling due to their strength in drawing direct relations between words in sequential data without recurrence.  They separately attend to different aspects of the human language processing system, but why one performs better than the other one is not yet clear. Therefore, what constitutes the core of this study is an architecture that combines both mechanisms. We specifically use BERT (Bidirectional Encoder Representations from Transformers) and LSTM layers to create and compare different language models.
- 
-In this regard, we will train three different language models with self-attention (BERT) and recurrence (LSTM) using masking strategy for training. 
+# Seperation or corporation of recurrence and self-attention
+
+This study investigates different aspects of the human language processing system and how they are reflected in recent deep neural network architectures.  Numerous research supports that neural networks that utilize recurrence not only show promising results in many natural language processing tasks but also give insights into how sentence comprehension takes place in humans and what type of complex cognitive operations underlie this process such as incrementality. However, successive neural networks such as [Transformers](https://arxiv.org/pdf/1706.03762.pdf) that make use of a self-attention mechanism are now considered the state-of-the-art in language modeling due to their strength in drawing direct relations between words in sequential data without recurrence.  They separately attend to different aspects of the human language processing system, but why one performs better than the other one is not yet clear. Therefore, what constitutes the core of this study is an architecture that combines both mechanisms. We specifically use BERT (Bidirectional Encoder Representations from Transformers) and LSTM layers to create and compare different language models.
+
+In this regard, we will train three different language models with self-attention (BERT) and recurrence (LSTM) using [**masking approach**](https://aclanthology.org/N19-1423.pdf) for training.
 * BERT model
 * LSTM model
 * BERT + LSTM model
 
-For the nature of our project, we won't be using pretrained word embeddings in our models so we will train these models from scratch using **TensorFlow** on the [**Amazon Polarity**](https://huggingface.co/datasets/Siki-77/amazon6_polarity) dataset loaded from Hugging Face Datasets. 
+For the nature of our project, we won't be using pretrained word embeddings in our models so we will train these models from scratch using [**TensorFlow**](https://www.tensorflow.org/install) on the [**Amazon Polarity**](https://huggingface.co/datasets/Siki-77/amazon6_polarity) dataset loaded from Hugging Face Datasets.
 
-## Masked Language Modeling (MLM)
+## Masked Language Modeling (MLM) (Pretraining)
 We will make use of masking approach for training which is called **Masked Language Modeling** (MLM).  Before feeding word sequences into our models, 15% of the words in each sequence are replaced with a **[mask]** token. The model then attempts to predict the original value of the masked words, based on the context provided by the other, non-masked, words in the sequence.
 
-## NEXT: Next Sentence Prediction (NSP)! 
+## NEXT: Next Sentence Prediction (NSP)! (Fine-tuning)
 (In progress)
 
 The NSP task forces the model to understand the relationship between two sentences. In this task, BERT is required to predict whether the second sentence is related to the first one. During training, the model is fed with 50% of connected sentences and another half with random sentence sequence.
 
-## Set-up
+# Set-up
 
-We will train the models in [**TensorFlow**](https://www.tensorflow.org/install) with keras layers on Google Colab.  Let's import necessay libraries!
+We will train the models in [**TensorFlow**](https://www.tensorflow.org/install) with keras layers on Google Colab.  
+
+* Let's import necessay libraries!
 
 ```
 import tensorflow as tf
@@ -35,23 +38,42 @@ import glob
 import re
 from pprint import pprint
 ```
-## Dataset
 
-Models are trained with 50,000 reviews (both negative and positive sentiment) from [**Amazon Polarity**](https://huggingface.co/datasets/Siki-77/amazon6_polarity) dataset from Hugging Face. 
+*  Set environment variables
+```
+@dataclass
+class Config:
+    MAX_LEN = 128
+    BATCH_SIZE = 32
+    LR = 0.001
+    VOCAB_SIZE = 700
+    EMBED_DIM = 64
+    NUM_HEAD = 8  # used in bert model
+    FF_DIM = 128  # used in bert model
+    NUM_LAYERS = 1
+    TRAIN_SIZE = 5000
 
-Install following libraries in order to load the dataset from Hugging Face.
+config = Config()
+```
+
+# Dataset
+
+Models are trained with 50,000 reviews (both negative and positive sentiment) from [**Amazon Polarity**](https://huggingface.co/datasets/Siki-77/amazon6_polarity) dataset from Hugging Face.
+
+
+* Install following libraries in order to load the dataset from Hugging Face.
 ```
 ! pip install datasets
 ! pip install apache_beam
 ```
 
-Import the libraries.  We will use **load_dataset**
+* Import the libraries.  We will use ```load_dataset```
 ```
 import apache_beam
 from datasets import load_dataset
 ```
 
-Load the dataset
+* Load the dataset
 ```
 dataset = load_dataset("Siki-77/amazon6_polarity")
 print(dataset)
@@ -73,11 +95,10 @@ DatasetDict({
 })
 ```
 
-For training our language models, only context data which contains the body of the document is used, without the label/feeling or the title data. In total, there are 249,624 training samples and 207,317 test samples in this dataset as seen below.  We will only make use of the first 50,000 samples to train our models
+For training our language models, only context data which contains the body of the document is used, without the label/feeling or the title data. In total, there are 249,624 training samples and 207,317 test samples in this dataset as seen below.  We will only make use of the first 50,000 samples to train our models.
 
-Get trainign and test samples
+* Get training and test samples
 ```
-train_size = 50000 # Only 50,000 reviews to create the vcabulary and to train models
 train_amazon_review = []
 test_amazon_review = []
 
@@ -91,7 +112,8 @@ test_amazon_review = []
 for i in range(length_test):
     test_amazon_review.append(dataset['test'][i]['context'])
 
-train_amazon_review_subset = train_amazon_review[:train_size]
+# train_size = 50000
+train_amazon_review_subset = train_amazon_review[:config.TRAIN_SIZE]
 print(dataset['test'][100]['context'])
 ```
 
@@ -100,7 +122,7 @@ One sample can be seen below.
 '"Boutique" quality sailor suit. I liked it so much I even bought the coordinating dress for my daughter. You will not be disappointed with this find!'
 ```
 
-## Data preprocessing
+# Data preprocessing
 
 Since we need to feed numbers as vectors, not raw text to train our language models, we will vectorize the reviews. Also, when masked, the mask token replaces the token ID with 6999 as seen below.
 
@@ -113,17 +135,20 @@ Masked text sample: Definitely a good [mask]. I strongly recommend it!
 Masked token IDs: [  271    7   40 6999    4 2521  144    3   ] # this sequence is padded to the maxlen which is 128
 ```
 
-### Create the vocabulary
+## Step 1: Create the vocabulary
 
 We will use the [**TextVectorization**](https://www.tensorflow.org/api_docs/python/tf/keras/layers/TextVectorization) to index the vocabulary found in the dataset. Later, we'll use the same layer instance to vectorize the samples .
 
-Our layer will only consider the top 7,000 words, and will truncate or pad sequences to be actually 128 tokens long. 
+Our layer will only consider the top 7,000 words, and will truncate or pad sequences to be actually 128 tokens long.
 
 ```
 vocab_size = 7000  # Only consider the top 7k words
 maxlen = 128  # Only consider the first 128 words of each amazon review
 ```
 We will also use a customized standardization for this dataset and add the masked token to the vocabulary.
+```
+[mask] token ID: 6999
+```
 ```
 def custom_standardization(input_data):
     lowercase = tf.strings.lower(input_data)
@@ -133,39 +158,33 @@ def custom_standardization(input_data):
     )
 
 vectorizer = layers.TextVectorization(
-    max_tokens=vocab_size,
+    max_tokens=config.VOCAB_SIZE,
     output_mode="int",
-    output_sequence_length=maxlen,
+    output_sequence_length=config.MAX_LEN,
     standardize=custom_standardization
     )
 
 texts = train_amazon_review_subset
 vectorizer.adapt(texts)
 
-# Create the vocabulary 
+# Create the vocabulary
 vocab = vectorizer.get_vocabulary()
 
-# Add the [mask] token to the end of the vocabulary 
-vocab = vocab[: vocab_size - 1] + ["[mask]"] 
+# Add the [mask] token to the end of the vocabulary
+vocab = vocab[: config.VOCAB_SIZE - 1] + ["[mask]"]
 vectorizer.set_vocabulary(vocab)
 
 mask_token_id = vectorizer(["[mask]"]).numpy()[0][0]
-print('[mask] token ID: ' + str(mask_token_id))
+# print('[mask] token ID: ' + str(mask_token_id))
 
 ```
-Look up the [mask] token ID
-
-```
-[mask] token ID: 6999
-```
-
-### Vectorize the training data
+## Step 2: Vectorize the training data
 
 ```
 output = vectorizer(texts)
 vectorized_train_review = output.numpy()
 ```
-### Mask 15% of the tokens
+## Step 3: Mask 15% of the tokens
 
 Since MLM is used to train our models, we will mask 15% of the tokens in our data. However, there is a problem with this masking approach since the model only tries to predict when the [mask] token is present in the input, while we want the model to try to predict the correct tokens regardless of what token is present in the input. To deal with this issue, out of the 15% of the tokens selected for masking:
 - 80% of the tokens are actually replaced with the token [mask].
@@ -205,7 +224,6 @@ def get_masked_input_and_labels(vectorized_data):
     print(vectorized_data_labels)
     return vectorized_data_masked, vectorized_data_labels
 
-
 # Prepare data for masked language model
 masked_train, masked_labels = get_masked_input_and_labels(
     vectorized_train_review
@@ -216,14 +234,14 @@ mlm_data = tf.data.Dataset.from_tensor_slices(
 )
 
 # batch_size = 16
-mlm_data = mlm_data.shuffle(1000).batch(batch_size)
+mlm_data = mlm_data.shuffle(1000).batch(config.BATCH_SIZE)
 ```
  
-# Train the models
+# Masked Language Models
 
-## BERT 
+## Model 1: BERT
 
-### Create position embedding matrix
+### Create positional embedding matrix
 ```
 def get_pos_encoding_matrix(max_len, d_emb):
     pos_enc = np.array(
@@ -243,17 +261,18 @@ def get_pos_encoding_matrix(max_len, d_emb):
 ### Create self-attention module
 ```
 def self_attention_layer(query, key, value, i):
+
     # Multi headed self-attention
     attention_output = layers.MultiHeadAttention(
         num_heads=config.NUM_HEAD,
         key_dim=config.EMBED_DIM // config.NUM_HEAD,
-        name="encoder_{}/multiheadattention".format(i),
+        name="Multi_head_attention",
     )(query, key, value)
-    attention_output = layers.Dropout(0.1, name="encoder_{}/att_dropout".format(i))(
+    attention_output = layers.Dropout(0.1)(
         attention_output
     )
     attention_output = layers.LayerNormalization(
-        epsilon=1e-6, name="encoder_{}/att_layernormalization".format(i)
+        epsilon=1e-6
     )(query + attention_output)
 
     # Feed-forward layer
@@ -262,15 +281,15 @@ def self_attention_layer(query, key, value, i):
             layers.Dense(config.FF_DIM, activation="relu"),
             layers.Dense(config.EMBED_DIM),
         ],
-        name="encoder_{}/ffn".format(i),
     )
     ffn_output = ffn(attention_output)
-    ffn_output = layers.Dropout(0.1, name="encoder_{}/ffn_dropout".format(i))(
+    ffn_output = layers.Dropout(0.1)(
         ffn_output
     )
     sequence_output = layers.LayerNormalization(
-        epsilon=1e-6, name="encoder_{}/ffn_layernormalization".format(i)
+        epsilon=1e-6
     )(attention_output + ffn_output)
+
     return sequence_output
 ```
 
@@ -278,11 +297,16 @@ def self_attention_layer(query, key, value, i):
 
 ```
 def bert_encoder():
+
+    # Input layer
     inputs = layers.Input((config.MAX_LEN,), dtype=tf.int64)
 
+    # Embedding layer
     word_embeddings = layers.Embedding(
         config.VOCAB_SIZE, config.EMBED_DIM, name="word_embedding"
     )(inputs)
+
+    # Positional encoding
     position_embeddings = layers.Embedding(
         input_dim=config.MAX_LEN,
         output_dim=config.EMBED_DIM,
@@ -291,65 +315,93 @@ def bert_encoder():
     )(tf.range(start=0, limit=config.MAX_LEN, delta=1))
     embeddings = word_embeddings + position_embeddings
 
+    # Self-attention layer
     encoder_output = embeddings
     for i in range(config.NUM_LAYERS):
         encoder_output = self_attention_layer(encoder_output, encoder_output, encoder_output, i)
 
-    mlm_output = layers.Dense(config.VOCAB_SIZE, name="mlm_cls", activation="softmax")(
+    # Soft-max layer
+    mlm_output = layers.Dense(config.VOCAB_SIZE, activation="softmax")(
         encoder_output
     )
-    mlm_model = tf.keras.Model(inputs=inputs, outputs=mlm_output, name="masked_bert_model_NEW")
 
+    # Create the model
+    bert_model = tf.keras.Model(inputs=inputs, outputs=mlm_output, name="masked_bert")
+
+    # Set optimizer as Adam, loss as Sparse Categorical Crossentropy
     optimizer = keras.optimizers.Adam(learning_rate=config.LR)
-    mlm_model.compile(optimizer=optimizer,
+    bert_model.compile(optimizer=optimizer,
                       loss=tf.keras.losses.SparseCategoricalCrossentropy())
+
+    # List of metrics to monitor
     metrics=[keras.metrics.SparseCategoricalAccuracy()]
 
-    return mlm_model
-bertlm = bert_encoder()
-bertlm.summary()
+    return bert_model
+
+# Initiate the model
+bert_mlm = bert_encoder()
+# See the model architecture
+bert_mlm.summary()
 ```
-## LSTM
+## Model 2: LSTM
 
 ```
 def lstm():
+
+    # Input layer
     inputs = layers.Input((config.MAX_LEN,), dtype=tf.int64)
+
+    # Embedding layer
     word_embeddings = layers.Embedding(
         config.VOCAB_SIZE, config.EMBED_DIM, name="word_embedding", mask_zero=True
     )(inputs)
+
+    # Two LSTM layers followed by Dropout layers
     lstm_output = layers.LSTM(config.EMBED_DIM, return_sequences=True)(word_embeddings)
     lstm_output = layers.Dropout(0.1)(lstm_output)
     lstm_output = layers.LSTM(config.EMBED_DIM, return_sequences=True)(lstm_output)
     lstm_output = layers.Dropout(0.1)(lstm_output)
 
-    mlm_output = layers.Dense(config.VOCAB_SIZE, name="output", activation="softmax")(
+    # Softmax layer
+    lstm_output = layers.Dense(config.VOCAB_SIZE, activation="softmax")(
         lstm_output
     )
-    mlm_model = tf.keras.Model(inputs, mlm_output, name="masked_lstm_language_model")
 
+    # Create the LSTM model
+    lstm_model = tf.keras.Model(inputs, lstm_output, name="masked_lstm")
+
+    # Set Adam as optimizer
     optimizer = keras.optimizers.Adam(learning_rate=config.LR)
-    mlm_model.compile(optimizer=optimizer,  loss=keras.losses.SparseCategoricalCrossentropy(),
+
+    # Cross entropy as loss
+    lstm_model.compile(optimizer=optimizer,  loss=keras.losses.SparseCategoricalCrossentropy(),
+
     # List of metrics to monitor
     metrics=[keras.metrics.SparseCategoricalAccuracy()])
-    
-    return mlm_model
+
+    return lstm_model
+
 # Initiate the model
-lstm_lm = lstm()
-# See the model architecture 
-lstm_lm.summary()
+lstm_mlm = lstm()
+# See the model architecture
+lstm_mlm.summary()
 ```
 
-## BERT + LSTM
+## Model 3: BERT + LSTM
 
+We will combine the self-attention module with two LSTM layers.
 ```
 def bert_lstm():
+
+    # Input layer
     inputs = layers.Input((config.MAX_LEN,), dtype=tf.int64)
 
+    # Embedding layer
     word_embeddings = layers.Embedding(
         config.VOCAB_SIZE, config.EMBED_DIM, name="word_embedding"
     )(inputs)
-    
-    # attention layer
+
+    # Positional encodings
     position_embeddings = layers.Embedding(
         input_dim=config.MAX_LEN,
         output_dim=config.EMBED_DIM,
@@ -358,36 +410,51 @@ def bert_lstm():
     )(tf.range(start=0, limit=config.MAX_LEN, delta=1))
     embeddings = word_embeddings + position_embeddings
 
+    # Self-attention layer
     encoder_output = embeddings
     for i in range(config.NUM_LAYERS):
         encoder_output = self_attention_layer(encoder_output, encoder_output, encoder_output, i)
-    
-    # LSTM layer
+
+    # LSTM layers taking word embeddings directly
     lstm_output = layers.LSTM(config.EMBED_DIM, return_sequences=True)(word_embeddings)
     lstm_output = layers.Dropout(0.1)(lstm_output)
     lstm_output = layers.LSTM(config.EMBED_DIM, return_sequences=True)(lstm_output)
     lstm_output = layers.Dropout(0.1)(lstm_output)
-    
-    
+
+    # Encoder output and LSTM output are added together
     lstm_attention = encoder_output + lstm_output
-    mlm_output = layers.Dense(config.VOCAB_SIZE, name="mlm_cls", activation="softmax")(
+
+    # Softmax layer
+    mlm_output = layers.Dense(config.VOCAB_SIZE, activation="softmax")(
         lstm_attention
     )
-    mlm_model = tf.keras.Model(inputs=inputs, outputs=mlm_output, name="masked_bert_model_lstm")
-    
+
+    # Create the BERT + LSTM model
+    mlm_model = tf.keras.Model(inputs=inputs, outputs=mlm_output, name="masked_bert_lstm")
+
+    # Adam as optimizer
     optimizer = keras.optimizers.Adam(learning_rate=config.LR)
-    mlm_model.compile(optimizer=optimizer, 
+
+    # Cross entropy loss
+    mlm_model.compile(optimizer=optimizer,
                       loss=tf.keras.losses.SparseCategoricalCrossentropy())
-    metrics=[keras.metrics.SparseCategoricalAccuracy()])
+
+    # List of metrics to monitor
+    metrics=[keras.metrics.SparseCategoricalAccuracy()]
 
     return mlm_model
 
-bert_lstm_lm = bert_lstm()
-bert_lstm_lm.summary()
+# Initiate the model
+bert_lstm_mlm = bert_lstm()
+# See the model architecture
+bert_lstm_mlm.summary()
 ```
-### Callbacks
 
-Before we train, we will create some [callbacks](https://www.tensorflow.org/api_docs/python/tf/keras/callbacks/Callback) to see the progress of the model with ech epoch.
+# Training
+
+## Callbacks
+
+Before we train, we will create some [callbacks](https://www.tensorflow.org/api_docs/python/tf/keras/callbacks/Callback) to see the progress of the model with each epoch.
 
 ```
 id2token = dict(enumerate(vectorizer.get_vocabulary()))
@@ -439,19 +506,20 @@ generator_callback3 = MaskedTextGenerator(sample_tokens3.numpy())
 ```
 epoch = 5
 
-bert.fit(mlm_ds, epochs=10, callbacks=[generator_callback, generator_callback2, generator_callback3])
-bert.save("masked_bert.h5")
+bert_mlm.fit(mlm_data, epochs=epoch, callbacks=[generator_callback, generator_callback2, generator_callback3])
+bert_mlm.save("masked_bert.h5")
 
-lstm.fit(mlm_ds, epochs=10, callbacks=[generator_callback, generator_callback2, generator_callback3])
-lstm.save("masked_lstm.h5")
+lstm_mlm.fit(mlm_data, epochs=epoch, callbacks=[generator_callback, generator_callback2, generator_callback3])
+lstm_mlm.save("masked_lstm.h5")
 
-bert_lstm.fit(mlm_ds, epochs=10, callbacks=[generator_callback, generator_callback2, generator_callback3])
-bert_lstm.save("masked_bert_lstm.h5")
+bert_lstm_mlm.fit(mlm_data, epochs=epoch, callbacks=[generator_callback, generator_callback2, generator_callback3])
+bert_lstm_mlm.save("masked_bert_lstm.h5")
 ```
 
 
+# Evaluation
 
-## Autogenerate
+## Predict next word
 
 ```
 def decode(tokens):
@@ -459,19 +527,19 @@ def decode(tokens):
 
 def convert_ids_to_tokens(id):
         return id2token[id]
-    
+
 def generate_next_word(text, max_length, model):
-    
+
     for i in range(max_length):
         predict = []
         predict.append(text + " [mask]")
-        sample_tokens = vectorize_layer(predict)
+        sample_tokens = vectorizer(predict)
         prediction = model.predict(sample_tokens.numpy())
 
         masked_index = np.where(sample_tokens == mask_token_id)
         masked_index = masked_index[1]
         mask_prediction = prediction[0][masked_index]
-        
+
         top_indices = mask_prediction[0].argsort()[-1 :][::-1]
         values = mask_prediction[0][top_indices]
 
@@ -487,64 +555,65 @@ def generate_next_word(text, max_length, model):
                 "predicted mask token": convert_ids_to_tokens(p),
             }
             pprint(result)
-            
+
         next_word = convert_ids_to_tokens(top_indices[0])
         text = text + " " + next_word
-    
 
-text = "I wouldn't waste my"
+
+text = "I would "
+```
+```
+generate_next_word(text, 5, bert_mlm)
+generate_next_word(text, 5, lstm_mlm)
+generate_next_word(text, 5, bert_lstm_mlm)
 ```
 
-```
-auto_generate(text, 5, bert) 
-auto_generate(text, 5, lstm) 
-auto_generate(text, 5, bert_lstm)
+One of the predictions for this sample from the test set is given below.
 
 ```
+Input: I would
+Predition:  I would recommend this book it again
+```
+## Predict masked token
 
 ```
-id2token = dict(enumerate(vectorize_layer.get_vocabulary()))
-token2id = {y: x for x, y in id2token.items()}
-
 def decode(tokens):
         return " ".join([id2token[t] for t in tokens if t != 0])
 
 def convert_ids_to_tokens(id):
         return id2token[id]
-    
+
 def predict_masked(text, model):
-    
-    sample_tokens2 = vectorize_layer(text)
-    prediction2 = model.predict(sample_tokens2.numpy())
 
-    masked_index2 = np.where(sample_tokens2 == mask_token_id)
-    masked_index2 = masked_index2[1]
-    mask_prediction2 = prediction2[0][masked_index2]
-    
-    top_indices2 = mask_prediction2[0].argsort()[-1 :][::-1]
-    values2 = mask_prediction2[0][top_indices2]
+    sample_tokens = vectorizer(text)
+    prediction = model.predict(sample_tokens.numpy())
 
-    for i in range(len(top_indices2)):
-        p2 = top_indices2[i]
-        v2 = values2[i]
-        tokens2 = np.copy(sample_tokens2[0])
-        tokens2[masked_index2[0]] = p2
-        result2 = {
-            "input_text": decode(sample_tokens2[0].numpy()),
-            "prediction": decode(tokens2),
-            "probability": v2,
+    masked_index = np.where(sample_tokens == mask_token_id)
+    masked_index = masked_index[1]
+    mask_prediction = prediction[0][masked_index]
+
+    top_indices = mask_prediction[0].argsort()[-1 :][::-1]
+    values = mask_prediction[0][top_indices]
+
+    for i in range(len(top_indices)):
+        p = top_indices[i]
+        v = values[i]
+        tokens = np.copy(sample_tokens[0])
+        tokens[masked_index[0]] = p
+        result = {
+            "input_text": decode(sample_tokens[0].numpy()),
+            "prediction": decode(tokens),
+            "probability": v,
             "predicted mask token": convert_ids_to_tokens(p),
         }
-        pprint(result2)
+        pprint(result)
 
-text2 = "Definitely a good [mask]. I strongly recommend it"
+text2 = ["Definitely a good [mask]. I strongly recommend it"]
 ```
-
 ```
-predict_masked(text2, bert) 
-predict_masked(text2, lstm) 
-predict_masked(text2, bert_lstm)
-
+predict_masked(text2, bert_mlm)
+predict_masked(text2, lstm_mlm)
+predict_masked(text2, bert_lstm_mlm)
 ```
 
 One of the predictions for this sample from the test set is given below. 
@@ -554,3 +623,4 @@ Input: Definitely a good [mask]. I strongly recommend it!
 (Expected) Output: Definitely a good buy. I strongly recommend it!
 (Predicted) Output: Definitely a good product. I strongly recommend it!
 ```
+
