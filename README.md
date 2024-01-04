@@ -23,7 +23,7 @@ The NSP task forces the model to understand the relationship between two sentenc
 
 We will train the models in [**TensorFlow**](https://www.tensorflow.org/install) with keras layers on Google Colab.  
 
-* Let's import necessay libraries!
+* Necessay libraries
 
 ```
 import tensorflow as tf
@@ -39,7 +39,7 @@ import re
 from pprint import pprint
 ```
 
-*  Set environment variables
+*  Environment variables
 ```
 @dataclass
 class Config:
