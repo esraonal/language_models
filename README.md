@@ -19,6 +19,14 @@ We will make use of masking approach for training which is called **Masked Langu
 
 The NSP task forces the model to understand the relationship between two sentences. In this task, BERT is required to predict whether the second sentence is related to the first one. During training, the model is fed with 50% of connected sentences and another half with random sentence sequence.
 
+# How to train and evaluate the models from scratch
+
+The code is available to run on Google Colab
+
+<a target="_blank" href="https://colab.research.google.com/github/esraonal/language_models/blob/main/bert_lstm_models.ipynb">
+  <img src="https://colab.research.google.com/assets/colab-badge.svg" alt="Open In Colab"/>
+</a>
+
 # Set-up
 
 We will train the models in [**TensorFlow**](https://www.tensorflow.org/install) with keras layers on Google Colab.  
