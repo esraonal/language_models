@@ -2,12 +2,19 @@
 # Project Description
 
 This study investigates different aspects of the human language processing system and how they are reflected in recent deep neural network architectures.  Numerous research supports that neural networks that utilize recurrence not only show promising results in many natural language processing tasks but also give insights into how sentence comprehension takes place in humans and what type of complex cognitive operations underlie this process such as incrementality. However, successive neural networks such as Transformers that make use of a self-attention mechanism are now considered the state-of-the-art in language modeling due to their strength in drawing direct relations between words in sequential data without recurrence.  They separately attend to different aspects of the human language processing system, but why one performs better than the other one is not yet clear for language processing and what the results of an architecture that combines both mechanisms constitutes the core of this study. We specifically use BERT (Bidirectional Encoder Representations from Transformers) and (Bi)LSTM layers to create different language models.
+ 
+In this regard, we will train three different language models with self-attention (BERT) and recurrence (LSTM). For the nature of our project, we won't be using pretrained word embeddings in our models so we will train these models from scratch using **TensorFlow** on the [**Amazon Polarity**](https://huggingface.co/datasets/Siki-77/amazon6_polarity) dataset loaded from Hugging Face Datasets. 
 
-## 
-In this regard, we will train four different language models with self-attention (BERT), recurrence (LSTM) and bidirectionality (BiLSTM).
+## Masked Language Modeling (MLM)
+We will make use of masking approach for training which is called **Masked Language Modeling** (MLM).  Before feeding word sequences into our models, 15% of the words in each sequence are replaced with a **[mask]** token. The model then attempts to predict the original value of the masked words, based on the context provided by the other, non-masked, words in the sequence.
+
+## NEXT: Next Sentence Prediction (NSP)! 
+(In progress)
+
+The NSP task forces the model to understand the relationship between two sentences. In this task, BERT is required to predict whether the second sentence is related to the first one. During training, the model is fed with 50% of connected sentences and another half with random sentence sequence.
 
 ## Set-up
-We will train the models in TensorFlow with keras layers.  Let's import necessay libraries!
+We will train the models in **TensorFlow** with keras layers.  Let's import necessay libraries!
 
 ```
 import tensorflow as tf
@@ -24,7 +31,7 @@ from pprint import pprint
 ```
 ## Dataset
 
-Models are trained with 50,000 reviews (both negative and positive sentiment) from [Amazon Polarity](https://huggingface.co/datasets/Siki-77/amazon6_polarity) dataset from Hugging Face. 
+Models are trained with 50,000 reviews (both negative and positive sentiment) from [**Amazon Polarity**](https://huggingface.co/datasets/Siki-77/amazon6_polarity) dataset from Hugging Face. 
 
 Install following libraries in order to load the dataset from Hugging Face.
 ```
@@ -32,7 +39,7 @@ Install following libraries in order to load the dataset from Hugging Face.
 ! pip install apache_beam
 ```
 
-Import the libraries.  We will use load_dataset
+Import the libraries.  We will use **load_dataset**
 ```
 import apache_beam
 from datasets import load_dataset
@@ -60,10 +67,11 @@ DatasetDict({
 })
 ```
 
-For training our language models, only context data which contains the body of the document is used, without the label/feeling or the title data. In total, there are 249,624 training samples and 207,317 test samples in this dataset as seen below.  
+For training our language models, only context data which contains the body of the document is used, without the label/feeling or the title data. In total, there are 249,624 training samples and 207,317 test samples in this dataset as seen below.  We will only make use of the first 50,000 samples to train our models
 
 Get trainign and test samples
 ```
+train_size = 50000
 train_amazon_review = []
 test_amazon_review = []
 
@@ -77,6 +85,7 @@ test_amazon_review = []
 for i in range(length_test):
     test_amazon_review.append(dataset['test'][i]['context'])
 
+train_amazon_review_subset = train_amazon_review[:train_size]
 print(dataset['test'][100]['context'])
 ```
 
@@ -85,16 +94,53 @@ One sample can be seen below.
 '"Boutique" quality sailor suit. I liked it so much I even bought the coordinating dress for my daughter. You will not be disappointed with this find!'
 ```
 
-## data preprocessing
+## Data preprocessing
 
-For this project we are not using pre-trained word embeddings so we will create our ow
+Since we need to feed numbers as vectors, not raw text to train our language models, we need to vectorize the reviews.
+ 
+```
+Text sample: Definitely a good buy. I strongly recommend it!
+Token IDs: [  321     5  38    87     4  1755   135     7  ]
+```
+Create the vocabulary
 
-Since we need to feed numbers as vectors, not strings to train our language models, we need to vectorize the reviews. Additionally, since we are using BERT and self-attention, masking has been chosen as the appropriate approach to prepare the data for training. This way, the task is to predict the masked token in a given contect. The input fed into the model is the masked token IDs, and the expected output is the actual token IDs. 
+We will use the [**TextVectorization**](https://www.tensorflow.org/api_docs/python/tf/keras/layers/TextVectorization) to index the vocabulary found in the dataset. Later, we'll use the same layer instance to vectorize the samples .
+
+Our layer will only consider the top 7,000 words, and will truncate or pad sequences to be actually 128 tokens long. 
 
 ```
-Actual sample: Definitely a good buy. I strongly recommend it!
-Actual token IDs: [  321     5  38    87     4  1755   135     7  ]
+vocab_size = 7000  # Only consider the top 20k words
+maxlen = 128  # Only consider the first 200 words of each movie review
+```
+We will also use a customized standardization and add the masked token to the vocabulary.
+```
+def custom_standardization(input_data):
+    lowercase = tf.strings.lower(input_data)
+    stripped_html = tf.strings.regex_replace(lowercase, "<br />", " ")
+    return tf.strings.regex_replace(
+        stripped_html, "[%s]" % re.escape("!#$%&'()*+,-./:;<=>?@\^_`{|}\"~"), ""
+    )
 
+vectorizer = layers.TextVectorization(
+    max_tokens=vocab_size,
+    output_mode="int",
+    output_sequence_length=maxlen,
+    standardize=custom_standardization
+    )
+
+texts = train_amazon_review_subset
+vectorizer.adapt(texts)
+vocab = vectorizer.get_vocabulary()
+vocab = vocab[: vocab_size - 1] + ["[mask]"]
+vectorizer.set_vocabulary(vocab)
+
+mask_token_id = vectorizer(["[mask]"]).numpy()[0][0]
+print(mask_token_id)
+
+```
+Additionally, since we are using BERT and self-attention, masking has been chosen as the appropriate approach to prepare the data for training. This way, the task is to predict the masked token in a given contect. The input fed into the model is the masked token IDs, and the expected output is the actual token IDs. 
+ 
+```
 Masked sample: Definitely a good [mask]. I strongly recommend it!
 Masked token IDs: [  321     5    38 29999     4  1755   135     7  ]
 ```
@@ -112,6 +158,7 @@ However, there is a problem with this masking approach since the model only trie
 - 10% of the time tokens are replaced with a random token.
 - 10% of the time tokens are left unchanged.
 
+For this project we are not using pre-trained word embeddings so models will also learn these embeddings. 
 ## autoagressive vs masked
 
 First langauge model is trained with the encoder from the classical Transformers architecture.
