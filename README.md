@@ -46,12 +46,12 @@ class Config:
     MAX_LEN = 128
     BATCH_SIZE = 32
     LR = 0.001
-    VOCAB_SIZE = 700
+    VOCAB_SIZE = 7000
     EMBED_DIM = 64
     NUM_HEAD = 8  # used in bert model
     FF_DIM = 128  # used in bert model
     NUM_LAYERS = 1
-    TRAIN_SIZE = 5000
+    TRAIN_SIZE = 50000
 
 config = Config()
 ```
