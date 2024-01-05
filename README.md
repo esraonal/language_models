@@ -161,8 +161,9 @@ Masked data is used as the input while unmasked data as the labels.
 ## Model 2: LSTM
 ![lstm](https://github.com/esraonal/language_models/blob/main/lstm.png)
 ## Model 3: BERT + LSTM
-![bert_lstm](https://github.com/esraonal/language_models/blob/main/bert_lstm.png)
 We will combine the self-attention module with two LSTM layers.
+
+![bert_lstm](https://github.com/esraonal/language_models/blob/main/bert_lstm.png)
 
 # Training
 
